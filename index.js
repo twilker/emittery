@@ -7,7 +7,7 @@ const resolvedPromise = Promise.resolve();
 const listenerAdded = Symbol('listenerAdded');
 const listenerRemoved = Symbol('listenerRemoved');
 
-let canEmitMetaEvents = false;
+let canEmitMetaEventsCounter = 0;
 let isGlobalDebugEnabled = false;
 
 const isEventKeyType = key => typeof key === 'string' || typeof key === 'symbol' || typeof key === 'number';
@@ -164,13 +164,13 @@ function defaultMethodNamesOrAssert(methodNames) {
 
 const isMetaEvent = eventName => eventName === listenerAdded || eventName === listenerRemoved;
 
-function emitMetaEvent(emitter, eventName, eventData) {
+async function emitMetaEvent(emitter, eventName, eventData) {
 	if (isMetaEvent(eventName)) {
 		try {
-			canEmitMetaEvents = true;
-			emitter.emit(eventName, eventData);
+			canEmitMetaEventsCounter++;
+			await emitter.emit(eventName, eventData);
 		} finally {
-			canEmitMetaEvents = false;
+			canEmitMetaEventsCounter--;
 		}
 	}
 }
@@ -347,7 +347,7 @@ export default class Emittery {
 	async emit(eventName, eventData) {
 		assertEventName(eventName);
 
-		if (isMetaEvent(eventName) && !canEmitMetaEvents) {
+		if (isMetaEvent(eventName) && canEmitMetaEventsCounter === 0) {
 			throw new TypeError('`eventName` cannot be meta event `listenerAdded` or `listenerRemoved`');
 		}
 
@@ -378,7 +378,7 @@ export default class Emittery {
 	async emitSerial(eventName, eventData) {
 		assertEventName(eventName);
 
-		if (isMetaEvent(eventName) && !canEmitMetaEvents) {
+		if (isMetaEvent(eventName) && canEmitMetaEventsCounter === 0) {
 			throw new TypeError('`eventName` cannot be meta event `listenerAdded` or `listenerRemoved`');
 		}
 
